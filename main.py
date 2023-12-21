@@ -111,6 +111,7 @@ class Element:
         for i in range(0, n):
             pointMatC[i].append(rho * cw * np.outer(np.array(eu.N_matrix[i]), np.array(eu.N_matrix[i])) * det[i])
 
+        pointMatC = np.array(pointMatC)
         if (n == 4):
             w1 = 1
             w2 = 1
@@ -120,9 +121,7 @@ class Element:
             w1 = 5.0 / 9.0
             w2 = 8.0 / 9.0
             w3 = 5.0 / 9.0
-            self.matC = sum(pointMatC[0] * w1 * w1 + pointMatC[1] * w1 * w2 + pointMatC[2] * w1 * w3 + pointMatC[
-                3] * w2 * w1 + pointMatC[4] * w2 * w2 + pointMatC[5] * w2 * w3 + pointMatC[6] * w3 * w1 + \
-                        pointMatC[7] * w3 * w2 + pointMatC[8] * w3 * w3)
+            self.matC = sum(pointMatC[0] * w1 * w1 + pointMatC[1] * w1 * w2 + pointMatC[2] * w1 * w3 + pointMatC[3] * w2 * w1 + pointMatC[4] * w2 * w2 + pointMatC[5] * w2 * w3 + pointMatC[6] * w3 * w1 + pointMatC[7] * w3 * w2 + pointMatC[8] * w3 * w3)
         if (n == 16):
             w1 = (18.0 - sqrt(30.0)) / 36.0
             w2 = (18.0 + sqrt(30.0)) / 36.0
@@ -293,7 +292,38 @@ class SOE:
         iter = int((t/data.getValue(2))+1)
 
         for i in range(iter):
-            f = open(f'vtk/{name}{iter}.vtk', 'w')
+            f = open(f'vtk/{nameSchema}{iter}.vtk', 'w')
+            content = f'''# vtk DataFile Version 2.0
+            Unstructured Grid Example
+            ASCII
+            DATASET UNSTRUCTURED_GRID
+
+            POINTS {nodes} float\n'''
+
+            for i in range(nodes):
+                content += f'{grid.Nodes[i].x} {grid.Nodes[i].y} 0.0\n'
+
+            content += f'\nCELLS {nElements} {nElements * 5}\n'
+
+            for i in range(elements):
+                content += f'4 {g.Elements[i].ID[0]-1} {g.Elements[i].ID[1]-1} {g.Elements[i].ID[2]-1} {g.Elements[i].ID[3]-1}\n'
+
+            content += f'\nCELL_TYPES {nElements}\n'
+
+            for i in range(elements):
+                content += f'9\n'
+
+            content += f'''\nPOINT_DATA {nodes}
+            SCALARS Temp float 1
+            LOOKUP_TABLE default\n'''
+
+            for i in range(nodes):
+                content += f'{temp[i]}\n'
+
+            temp = self.tempSystem(g, data.getValue(2), temp)
+
+            f.write(content)
+
 
 
 
@@ -355,16 +385,16 @@ Set1.showGlobalData()
 print()
 Grid1.setFlagBC(BC)
 Grid1.setNodeList()
-Grid1.setMatrixH(4, 25)
-Grid1.calcAllHbc(4, Set1.getValue(4), Set1.getValue(5))
-Grid1.calcAllC(4, Set1.getValue(7), Set1.getValue(8))
+Grid1.setMatrixH(9, 25)
+Grid1.calcAllHbc(9, Set1.getValue(4), Set1.getValue(5))
+Grid1.calcAllC(9, Set1.getValue(7), Set1.getValue(8))
 Grid1.showNodes()
 print()
 Grid1.showElements()
 print()
 print("BC List")
 print(BC)
-s = SOE(9, Grid1)
+s = SOE(16, Grid1)
 #s.show()
 s.fT(16,Grid1, Set1, np.full(16, Set1.getValue(6)))
 s.show()
